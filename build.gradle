@@ -1,0 +1,170 @@
+import java.nio.file.Files
+import java.nio.file.Paths
+
+plugins {
+    id "de.undercouch.download" version "3.4.3"
+}
+apply plugin: 'de.undercouch.download'
+description = 'skydrill-buildtools'
+group = 'io.panyu.skydrill'
+
+allprojects {
+  ext.openjdkVersion = "1.8.0.181"
+  ext.openjdkURL = "https://cdn.azul.com/zulu/bin/zulu8.31.0.1-jdk8.0.181-win_x64.zip"
+  ext.mavenVersion = "3.6.0"
+  ext.mavenURL = "https://www-us.apache.org/dist/maven/maven-3/3.6.0/binaries/apache-maven-3.6.0-bin.zip"
+  ext.antVersion = "1.10.5"
+  ext.antURL = "https://www-us.apache.org/dist//ant/binaries/apache-ant-1.10.5-bin.zip"
+  ext.thriftVersion = "0.11.0"
+  ext.thriftURL = "https://www-us.apache.org/dist/thrift/0.11.0/thrift-0.11.0.exe"
+  ext.protobufVersion = "3.6.1"
+  ext.protobufURL = "https://github.com/protocolbuffers/protobuf/releases/download/v3.6.1/protoc-3.6.1-win32.zip"
+  ext.pythonVersion = "3.7.1"
+  ext.pythonURL = "https://www.python.org/ftp/python/3.7.1/python-3.7.1-embed-amd64.zip"
+}
+
+configurations {
+  deploy
+}
+
+repositories {
+  maven { url "http://repo.maven.apache.org/maven2" }
+}
+
+task makeTarget {
+  doLast {
+    def packages = ["Java", "Maven", "Ant", "Thrift", "Protobuf", "Python"]
+    def batchBuilder = new StringBuilder("@echo off\n")
+    packages.each {p -> batchBuilder.append("call " + p.toLowerCase() + "\\set" + p + "Home.cmd\n") }
+    batchBuilder.append("\n")
+    batchBuilder.append("set PATH=")
+    packages.each {p -> batchBuilder.append("%" + p.toUpperCase() + "_HOME%\\bin;")}
+    batchBuilder.append("%PATH%\n")
+    batchBuilder.append("set dircmd=/o\n")
+
+    Files.write(Paths.get(new File("setEnv.bat").getCanonicalPath()), batchBuilder.toString().getBytes())
+  }
+}
+
+task installJdk {
+  doLast {
+    def srcURL = new URL("${openjdkURL}")
+    def srcFileName = new File(new URL("${openjdkURL}").getPath()).getName()
+    def destFile = new File(System.getenv("temp")+"/java", srcFileName)
+
+    download {
+      src srcURL
+      dest destFile
+      overwrite false
+    }
+
+    copy {
+      from zipTree(destFile)
+      into "java/${openjdkVersion}"
+    }
+
+    def javaHome = new File("java/${openjdkVersion}/" + srcFileName.substring(0, srcFileName.lastIndexOf('.'))).getCanonicalPath()
+    Files.write(Paths.get(new File("java/setJavaHome.cmd").getCanonicalPath()), ("set JAVA_HOME=" + javaHome).getBytes())
+  }
+}
+
+task installMaven {
+  doLast {
+    def srcURL = new URL("${mavenURL}")
+    def srcFileName = new File(new URL("${mavenURL}").getPath()).getName()
+    def destFile = new File(System.getenv("temp")+"/maven", srcFileName)
+
+    download {
+      src srcURL
+      dest destFile
+      overwrite false
+    }
+
+    copy {
+      from zipTree(destFile)
+      into "maven/${mavenVersion}"
+    }
+
+    def mavenHome = new File("maven/${mavenVersion}/" + srcFileName.substring(0, srcFileName.lastIndexOf('-'))).getCanonicalPath()
+    Files.write(Paths.get(new File("maven/setMavenHome.cmd").getCanonicalPath()), ("set MAVEN_HOME=" + mavenHome).getBytes())
+  }
+}
+
+task installAnt {
+  doLast {
+    def srcURL = new URL("${antURL}")
+    def srcFileName = new File(new URL("${antURL}").getPath()).getName()
+    def destFile = new File(System.getenv("temp")+"/ant", srcFileName)
+
+    download {
+      src srcURL
+      dest destFile
+      overwrite false
+    }
+
+    copy {
+      from zipTree(destFile)
+      into "ant/${antVersion}"
+    }
+
+    def antHome = new File("ant/${antVersion}/" + srcFileName.substring(0, srcFileName.lastIndexOf('-'))).getCanonicalPath()
+    Files.write(Paths.get(new File("ant/setAntHome.cmd").getCanonicalPath()), ("set ANT_HOME=" + antHome).getBytes())
+  }
+}
+
+task installThrift {
+  doLast {
+    download {
+      src "${thriftURL}"
+      dest "thrift/${thriftVersion}/bin/thrift.exe"
+    }
+
+    def thriftHome = new File("thrift/${thriftVersion}").getCanonicalPath()
+    Files.write(Paths.get(new File("thrift/setThriftHome.cmd").getCanonicalPath()), ("set THRIFT_HOME=" + thriftHome).getBytes())
+  }
+}
+
+task installProtobuf {
+  doLast {
+    def srcURL = new URL("${protobufURL}")
+    def destFile = new File(System.getenv("temp")+"/protobuf", "protobufc-${protobufVersion}.zip")
+
+    download {
+      src srcURL
+      dest destFile
+      overwrite false
+    }
+
+    copy {
+      from zipTree(destFile)
+      into "protobuf/${protobufVersion}"
+    }
+
+    def protobufHome = new File("protobuf/${protobufVersion}").getCanonicalPath()
+    Files.write(Paths.get(new File("protobuf/setProtobufHome.cmd").getCanonicalPath()), ("set PROTOBUF_HOME=" + protobufHome).getBytes())
+  }
+}
+
+
+task installPython {
+  doLast {
+    def srcURL = new URL("${pythonURL}")
+    def destFile = new File(System.getenv("temp")+"/python", "python-${pythonVersion}.zip")
+
+    download {
+      src srcURL
+      dest destFile
+      overwrite false
+    }
+
+    copy {
+      from zipTree(destFile)
+      into "python/${pythonVersion}/bin"
+    }
+
+    def pythonHome = new File("python/${pythonVersion}").getCanonicalPath()
+    Files.write(Paths.get(new File("python/setPythonHome.cmd").getCanonicalPath()), ("set PYTHON_HOME=" + pythonHome).getBytes())
+  }
+}
+
+makeTarget.dependsOn {[installJdk, installMaven, installAnt, installThrift, installProtobuf, installPython]}
